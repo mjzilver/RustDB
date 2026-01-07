@@ -1,0 +1,15 @@
+{"Put":{"key":"1","value":"1"}}
+{"Put":{"key":"foo","value":"bar"}}
+{"Put":{"key":"1","value":"1"}}
+{"Patch":{"key":"1","value":"2"}}
+{"Delete":{"key":"1"}}
+{"Put":{"key":"1","value":"1"}}
+{"Put":{"key":"foo","value":"bar"}}
+{"Put":{"key":"foo","value":"baz"}}
+{"Put":{"key":"1","value":"1"}}
+{"Put":{"key":"2","value":"1"}}
+{"Put":{"key":"2","value":"2"}}
+{"Put":{"key":"foo","value":"bar"}}
+{"Delete":{"key":"foo"}}
+{"Put":{"key":"foo","value":"bar"}}
+{"Put":{"key":"foo","value":"1123"}}
