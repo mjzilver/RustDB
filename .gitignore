@@ -1,2 +1,4 @@
 /target
 wal.bin
+snap.bin
+cargo.lock

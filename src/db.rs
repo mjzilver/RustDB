@@ -1,33 +1,12 @@
-use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     fmt::{self, Display, Formatter},
 };
 
-pub type DbResult<T> = Result<T, DbError>;
+use crate::binary::{read_exact, read_string, read_u32, write_string};
+use crate::error::{DbError, DbResult};
 
-#[derive(Debug)]
-pub enum DbError {
-    Io(std::io::Error),
-    CorruptLog { line: String },
-    InvalidCommand { input: String },
-    ChannelClosed,
-    KeyNotFound,
-}
-
-impl Display for DbError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            DbError::Io(e) => write!(f, "disk error: {}", e),
-            DbError::CorruptLog { line } => write!(f, "corrupt log entry: {}", line),
-            DbError::InvalidCommand { input } => write!(f, "invalid command: {}", input),
-            DbError::KeyNotFound => write!(f, "key not found"),
-            DbError::ChannelClosed => write!(f, "Task channel was closed"),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Clone)]
 pub enum Command {
     Put { key: String, value: String },
     Delete { key: String },
@@ -42,28 +21,8 @@ impl Display for Command {
     }
 }
 
-fn write_string(buf: &mut Vec<u8>, s: &str) {
-    let len = s.len() as u32;
-    buf.extend_from_slice(&len.to_be_bytes());
-    buf.extend_from_slice(s.as_bytes());
-}
-
-fn read_string(bytes: &[u8], cursor: &mut usize) -> DbResult<String> {
-    let len = u32::from_be_bytes(bytes[*cursor..*cursor + 4].try_into().unwrap()) as usize;
-    *cursor += 4;
-
-    let s = std::str::from_utf8(&bytes[*cursor..*cursor + len])
-        .map_err(|_| DbError::CorruptLog {
-            line: "<utf8>".into(),
-        })?
-        .to_owned();
-
-    *cursor += len;
-    Ok(s)
-}
-
 impl Command {
-    pub fn to_number(&self) -> u8 {
+    fn opcode(&self) -> u8 {
         match self {
             Command::Put { .. } => 0,
             Command::Delete { .. } => 1,
@@ -72,40 +31,35 @@ impl Command {
 
     pub fn serialize(&self) -> DbResult<Vec<u8>> {
         let mut buf = Vec::new();
+        buf.push(self.opcode());
 
         match self {
             Command::Put { key, value } => {
-                buf.push(self.to_number());
                 write_string(&mut buf, key);
                 write_string(&mut buf, value);
             }
             Command::Delete { key } => {
-                buf.push(self.to_number());
                 write_string(&mut buf, key);
             }
         }
+
         Ok(buf)
     }
 
-    pub fn deserialize(str: &String) -> DbResult<Command> {
-        let bytes = str.clone().into_bytes();
+    pub fn deserialize(bytes: &[u8]) -> DbResult<Self> {
         let mut cursor = 0;
 
-        let cmd = bytes.get(cursor).ok_or(DbError::CorruptLog {
-            line: "<empty>".into(),
-        })?;
-        cursor += 1;
+        let opcode = read_exact(bytes, &mut cursor, 1)?[0];
+        let key = read_string(bytes, &mut cursor)?;
 
-        let key = read_string(&bytes, &mut cursor)?;
-
-        match cmd {
+        match opcode {
             0 => {
-                let value = read_string(&bytes, &mut cursor)?;
+                let value = read_string(bytes, &mut cursor)?;
                 Ok(Command::Put { key, value })
             }
             1 => Ok(Command::Delete { key }),
             _ => Err(DbError::InvalidCommand {
-                input: format!("unknown opcode {}", cmd),
+                input: format!("unknown opcode {}", opcode),
             }),
         }
     }
@@ -125,5 +79,33 @@ impl KvState {
                 self.map.remove(&key);
             }
         }
+    }
+
+    pub fn serialize(&self) -> DbResult<Vec<u8>> {
+        let mut buf = Vec::new();
+
+        let len = self.map.len() as u32;
+        buf.extend_from_slice(&len.to_be_bytes());
+
+        for (k, v) in &self.map {
+            write_string(&mut buf, k);
+            write_string(&mut buf, v);
+        }
+
+        Ok(buf)
+    }
+
+    pub fn deserialize(bytes: &[u8]) -> DbResult<Self> {
+        let mut cursor = 0;
+        let len = read_u32(bytes, &mut cursor)? as usize;
+
+        let mut map = BTreeMap::new();
+        for _ in 0..len {
+            let key = read_string(bytes, &mut cursor)?;
+            let value = read_string(bytes, &mut cursor)?;
+            map.insert(key, value);
+        }
+
+        Ok(KvState { map })
     }
 }
