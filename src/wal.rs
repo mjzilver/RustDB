@@ -7,10 +7,10 @@ use tokio::fs::{self, File};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc::Receiver;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt};
+use crate::config::config_get;
 
 pub static WAL_FILEPATH: &str = "wal.bin";
 pub static SNAP_FILEPATH: &str = "snap.bin";
-const MAX_WAL_SIZE: u64 = 100 * 1024; // 100kb
 
 pub async fn try_read_snapshot() -> BTreeMap<String, String> {
     if let Ok(bytes) = fs::read(SNAP_FILEPATH).await {
@@ -26,7 +26,7 @@ pub async fn check_snapshot_needed(app_state: &SharedState) -> DbResult<()> {
     let metadata = fs::metadata(WAL_FILEPATH).await.map_err(DbError::Io)?;
     let wal_size = metadata.len();
 
-    if wal_size > MAX_WAL_SIZE {
+    if wal_size > config_get().max_wal_size {
         let bytes = app_state.kv.read().await.serialize()?;
 
         if cfg!(debug_assertions) {

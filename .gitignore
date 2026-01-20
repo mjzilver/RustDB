@@ -2,3 +2,4 @@
 wal.bin
 snap.bin
 cargo.lock
+config.toml

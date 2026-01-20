@@ -4,6 +4,7 @@ mod db;
 mod wal;
 mod binary;
 mod error;
+mod config;
 
 use app::AppState;
 use cli::handle_input;
@@ -13,6 +14,8 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::{broadcast, mpsc};
 use wal::{read_wal, try_read_snapshot, wal_task};
+
+use crate::config::config_get;
 
 #[tokio::main]
 async fn main() {
@@ -31,8 +34,10 @@ async fn main() {
 
     tokio::spawn(wal_task(rx, app_state.clone()));
 
-    let listener = TcpListener::bind("127.0.0.1:4000").await.unwrap();
-    println!("Listening on 127.0.0.1:4000");
+    let port = config_get().port;
+    let addr = format!("127.0.0.1:{port}");
+    let listener = TcpListener::bind(addr.clone()).await.unwrap();
+    println!("Listening on {addr}");
 
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
