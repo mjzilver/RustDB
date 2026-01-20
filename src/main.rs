@@ -36,7 +36,6 @@ async fn main() {
             "/kv/{key}",
             put(put_key)
                 .get(get_key)
-                .patch(patch_key)
                 .delete(delete_key),
         )
         .with_state(app_state.clone());

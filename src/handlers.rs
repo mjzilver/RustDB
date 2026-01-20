@@ -18,19 +18,6 @@ pub async fn put_key(
     Ok(StatusCode::NO_CONTENT)
 }
 
-pub async fn patch_key(
-    Path(key): Path<String>,
-    State(state): State<SharedState>,
-    body: String,
-) -> Result<StatusCode, StatusCode> {
-    let cmd = Command::Patch { key, value: body };
-    state
-        .send(cmd)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
 pub async fn get_key(
     Path(key): Path<String>,
     State(state): State<SharedState>,

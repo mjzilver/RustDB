@@ -4,7 +4,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc::Receiver;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 
-pub static FILEPATH: &str = "commands.log";
+pub static FILEPATH: &str = "wal.bin";
 
 pub async fn read_wal(app_state: &SharedState) {
     if let Ok(file) = tokio::fs::File::open(FILEPATH).await {

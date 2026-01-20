@@ -8,14 +8,10 @@ pub fn parse_command(input: &str) -> Result<Command, String> {
             key: key.to_string(),
             value: value.to_string(),
         }),
-        ["patch", key, value] => Ok(Command::Patch {
-            key: key.to_string(),
-            value: value.to_string(),
-        }),
         ["delete", key] => Ok(Command::Delete {
             key: key.to_string(),
         }),
-        _ => Err("Invalid command".into()),
+        _ => Err(format!("{args:?}").into()),
     }
 }
 
@@ -30,11 +26,6 @@ pub async fn handle_input(input: &str, state: SharedState) -> DbResult<String> {
     let cmd = parse_command(input).map_err(|input| DbError::InvalidCommand {
         input: input.to_string(),
     })?;
-    state.send(cmd).await.map_err(|_| {
-        DbError::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Failed to send command to WAL",
-        ))
-    })?;
+    state.send(cmd).await.map_err(|_| DbError::ChannelClosed)?;
     Ok("OK".to_string())
 }
