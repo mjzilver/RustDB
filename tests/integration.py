@@ -23,12 +23,15 @@ def put_keys(sock, file):
 
 
 def get_keys(sock, file):
+    missing = 0
     for i in range(0, COUNT, BATCH):
         cmds = [f"get key{j}" for j in range(i, i + BATCH)]
         resps = send_batch(sock, file, cmds)
         for j, r in enumerate(resps, start=i):
             if r != f"value{j}":
-                raise RuntimeError(f"get failed for key{j}: {r}")
+                missing += 1
+    if (missing > 0):
+        raise RuntimeError(f"get failed: missing {missing} keys")
     print("GET complete")
 
 
