@@ -20,17 +20,17 @@ use crate::config::config_get;
 #[tokio::main]
 async fn main() {
     let (tx, rx) = mpsc::channel(1024);
+    let (shutdown_tx, _) = broadcast::channel::<()>(1);
 
     let app_state = Arc::new(AppState {
         tx: tx.clone(),
         kv: tokio::sync::RwLock::new(KvState {
             map: try_read_snapshot().await,
         }),
+        shutdown_tx: shutdown_tx.clone(),
     });
 
     read_wal(&app_state).await;
-
-    let (shutdown_tx, _) = broadcast::channel::<()>(1);
 
     tokio::spawn(wal_task(rx, app_state.clone()));
 
@@ -42,30 +42,39 @@ async fn main() {
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
             println!("Shutting down...");
+            let _ = app_state.shutdown_tx.send(());
         }
 
-        _ = accept_loop(listener, app_state, shutdown_tx.clone()) => {}
+        _ = accept_loop(listener, app_state.clone()) => {}
     }
 
-    let _ = shutdown_tx.send(());
     println!("Server stopped.");
 }
 
 async fn accept_loop(
     listener: TcpListener,
     state: Arc<AppState>,
-    shutdown_tx: broadcast::Sender<()>,
 ) {
+    let mut shutdown_rx = state.shutdown_tx.subscribe();
+
     loop {
-        let (socket, _) = match listener.accept().await {
-            Ok(v) => v,
-            Err(_) => break,
-        };
+        tokio::select! {
+            _ = shutdown_rx.recv() => {
+                break;
+            }
 
-        let shutdown_rx = shutdown_tx.subscribe();
-        let state = state.clone();
+            accept = listener.accept() => {
+                let (socket, _) = match accept {
+                    Ok(v) => v,
+                    Err(_) => break,
+                };
 
-        tokio::spawn(handle_connection(socket, state, shutdown_rx));
+                let shutdown_rx = state.shutdown_tx.subscribe();
+                let state = state.clone();
+
+                tokio::spawn(handle_connection(socket, state, shutdown_rx));
+            }
+        }
     }
 }
 
@@ -107,7 +116,7 @@ async fn handle_connection(
         if cmd == "exit" {
             break;
         }
-
+        
         match handle_input(cmd, state.clone()).await {
             Ok(resp) => {
                 let _ = writer.write_all(resp.as_bytes()).await;

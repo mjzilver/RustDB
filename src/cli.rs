@@ -30,8 +30,11 @@ pub async fn handle_input(input: &str, state: SharedState) -> DbResult<String> {
             writeln!(&mut s, "DEBUG: key: {k}, val: {v}").map_err(|err| DbError::Fmt(err))?;
         }
         return Ok(s);
-    } else if input.starts_with("length") {
-        return Ok(format!("Dict length: {}", state.kv.read().await.map.len()));
+    } else if input.starts_with("amount") {
+        return Ok(format!("Amount of keys: {}", state.kv.read().await.map.len()));
+    } else if input.starts_with("shutdown") {
+        let _= state.shutdown_tx.send(());
+        return Ok("OK".to_string())
     }
 
     let cmd = parse_command(input).map_err(|input| DbError::InvalidCommand {
