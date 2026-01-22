@@ -14,7 +14,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             port: 4210,
-            max_wal_size:  100 * 1024, // 100kb,
+            max_wal_size: 100 * 1024, // 100kb,
         }
     }
 }

@@ -1,10 +1,10 @@
 mod app;
-mod cli;
-mod db;
-mod wal;
 mod binary;
-mod error;
+mod cli;
 mod config;
+mod db;
+mod error;
+mod wal;
 
 use app::AppState;
 use cli::handle_input;

@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
 use crate::app::SharedState;
+use crate::config::config_get;
 use crate::db::{Command, KvState};
 use crate::error::{DbError, DbResult};
 use tokio::fs::{self, File};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc::Receiver;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt};
-use crate::config::config_get;
 
 pub static WAL_FILEPATH: &str = "wal.bin";
 pub static SNAP_FILEPATH: &str = "snap.bin";
@@ -30,7 +30,11 @@ pub async fn check_snapshot_needed(app_state: &SharedState) -> DbResult<()> {
         let bytes = app_state.kv.read().await.serialize()?;
 
         if cfg!(debug_assertions) {
-            println!("WAL file size reached: {}, Writing {} bytes to snapfile", wal_size, bytes.len());
+            println!(
+                "WAL file size reached: {}, Writing {} bytes to snapfile",
+                wal_size,
+                bytes.len()
+            );
         }
 
         let tmp_path = "snap.bin.tmp";
