@@ -8,7 +8,7 @@ pub type SharedState = Arc<AppState>;
 pub struct AppState {
     pub tx: mpsc::Sender<Command>,
     pub kv: RwLock<KvState>,
-    pub shutdown_tx: broadcast::Sender<()>
+    pub shutdown_tx: broadcast::Sender<()>,
 }
 
 impl AppState {

@@ -12,7 +12,7 @@ use db::KvState;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::{RwLock, broadcast, mpsc};
 use wal::{read_wal, try_read_snapshot, wal_task};
 
 use crate::config::config_get;
@@ -24,7 +24,7 @@ async fn main() {
 
     let app_state = Arc::new(AppState {
         tx: tx.clone(),
-        kv: tokio::sync::RwLock::new(KvState {
+        kv: RwLock::new(KvState {
             map: try_read_snapshot().await,
         }),
         shutdown_tx: shutdown_tx.clone(),
@@ -51,10 +51,7 @@ async fn main() {
     println!("Server stopped.");
 }
 
-async fn accept_loop(
-    listener: TcpListener,
-    state: Arc<AppState>,
-) {
+async fn accept_loop(listener: TcpListener, state: Arc<AppState>) {
     let mut shutdown_rx = state.shutdown_tx.subscribe();
 
     loop {
@@ -116,7 +113,7 @@ async fn handle_connection(
         if cmd == "exit" {
             break;
         }
-        
+
         match handle_input(cmd, state.clone()).await {
             Ok(resp) => {
                 let _ = writer.write_all(resp.as_bytes()).await;

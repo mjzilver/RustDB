@@ -12,18 +12,27 @@ A learning project: a persistent key-value database server in Rust with write-ah
 
 Connect via `nc localhost 4210`:
 
+```sh
+# Mutating commands
+put <key> <value>    # Store a key-value pair
+delete <key>         # Remove a key
+
+# Viewing commands
+get <key>            # Retrieve a value
+range <start> <end>  # Query keys in range
+keys <needle>        # Search keys
+values <needle>      # Search values
+
+# Utility commands
+amount               # Count total keys
+exit                 # Close connection
+shutdown             # Stop server
 ```
-put <key> <value>
-get <key>
-delete <key>
-amount
-shutdown
-exit
-```
+
 ## Todo:
 - [X] WAL log
 - [X] Snapshotting
 - [X] Error handling
 - [ ] Proper logging
-- [ ] Search command
-- [ ] Range queries
+- [X] Search command
+- [X] Range queries

@@ -10,6 +10,13 @@ use crate::error::{DbError, DbResult};
 pub enum Command {
     Put { key: String, value: String },
     Delete { key: String },
+    Get { key: String },
+    Range { start: String, end: String },
+    Keys { needle: String },
+    Values { needle: String },
+    Amount,
+    DumpAll,
+    Shutdown,
 }
 
 impl Display for Command {
@@ -17,15 +24,33 @@ impl Display for Command {
         match self {
             Command::Put { key, value } => write!(f, "PUT key={} value={}", key, value),
             Command::Delete { key } => write!(f, "DELETE key={}", key),
+            Command::Get { key } => write!(f, "GET key={}", key),
+            Command::Range { start, end } => write!(f, "RANGE start={} end={}", start, end),
+            Command::Keys { needle } => write!(f, "KEYS needle={needle}"),
+            Command::Values { needle } => write!(f, "VALUES needle={needle}"),
+            Command::Amount => write!(f, "AMOUNT"),
+            Command::DumpAll => write!(f, "DUMP_ALL"),
+            Command::Shutdown => write!(f, "SHUTDOWN"),
         }
     }
 }
 
 impl Command {
+    pub fn is_mutation(&self) -> bool {
+        matches!(self, Command::Put { .. } | Command::Delete { .. })
+    }
+
     fn opcode(&self) -> u8 {
         match self {
             Command::Put { .. } => 0,
             Command::Delete { .. } => 1,
+            Command::Get { .. } => 2,
+            Command::Range { .. } => 3,
+            Command::Amount => 4,
+            Command::DumpAll => 5,
+            Command::Shutdown => 6,
+            Command::Keys { .. } => 7,
+            Command::Values { .. } => 8,
         }
     }
 
@@ -41,6 +66,7 @@ impl Command {
             Command::Delete { key } => {
                 write_string(&mut buf, key);
             }
+            _ => unreachable!(),
         }
 
         Ok(buf)
@@ -78,6 +104,7 @@ impl KvState {
             Command::Delete { key } => {
                 self.map.remove(&key);
             }
+            _ => unreachable!(),
         }
     }
 

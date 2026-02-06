@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::path::Path;
 use std::sync::OnceLock;
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
@@ -23,7 +24,7 @@ pub fn config_get() -> &'static Config {
     CONFIG.get_or_init(|| -> Config {
         let path = "Config.toml";
 
-        if !std::path::Path::new(path).exists() {
+        if !Path::new(path).exists() {
             let default = Config::default();
             let toml_str = toml::to_string(&default).unwrap();
             fs::write(path, toml_str).expect("Failed to create default config");
